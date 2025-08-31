@@ -579,7 +579,8 @@ static void check_poweron_reason(void)
         // 正常开机流程，无需特殊处理
         rt_thread_mdelay(1000);//延时1秒进行消抖
         rt_pin_write(BSP_POWER_ON, 1);//打开PMOS电源
-        rt_kprintf("Power IO ON\n");
+        rt_kprintf("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!Power IO ON!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n");
+        rt_kprintf("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n");
         break;
     }
     // 情况2：从休眠模式唤醒或关机状态唤醒
@@ -622,7 +623,8 @@ static void check_poweron_reason(void)
                 // 按键已松开，认为是误触发，直接关机
                 rt_kprintf("Not long press, shutdown now.\n");
                 rt_pin_write(BSP_POWER_ON, 0);//关闭PMOS电源
-                rt_kprintf("Power IO OFF\n");
+        rt_kprintf("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!Power IO OFF!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n");
+        rt_kprintf("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n");
                 PowerDownCustom();
                 // 死循环确保关机前不再执行其他操作
                 while (1) {};
@@ -632,7 +634,8 @@ static void check_poweron_reason(void)
                 // 长按判定为正常开机请求，继续启动流程
                 rt_kprintf("Long press detected, power on as normal.\n");
                 rt_pin_write(BSP_POWER_ON, 0);//重启后关闭PMOS电源
-                rt_kprintf("Power IO OFF\n");
+        rt_kprintf("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!Power IO OFF!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n");
+        rt_kprintf("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n");
             }
         }
         // 子情况4：无明确唤醒源（异常情况）
