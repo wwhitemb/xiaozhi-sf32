@@ -888,10 +888,10 @@ int main(void)
             bd_addr_t addr;
             ble_get_public_address(&addr);
             sprintf(local_name, "%s-%02x:%02x:%02x:%02x:%02x:%02x",
-                    BLUETOOTH_NAME, addr.addr[0], addr.addr[1], addr.addr[2],
+                    "sfpan-xiaozhi-xty", addr.addr[0], addr.addr[1], addr.addr[2],
                     addr.addr[3], addr.addr[4], addr.addr[5]);
 #else
-            const char *local_name = BLUETOOTH_NAME;
+            const char *local_name = "sfpan-xiaozhi-xty";
 #endif
             bt_interface_set_local_name(strlen(local_name), (void *)local_name);
         }
