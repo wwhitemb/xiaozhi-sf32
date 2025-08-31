@@ -124,67 +124,6 @@ static uint32_t
 static rt_timer_t s_pulse_encoder_timer = NULL;
 static struct rt_device *s_encoder_device;
 
-
-#define BSP_POWER_ON 8
-#define BSP_POWER_CHECK 7
-void gpio_pin_set(int pin, int val);
-GPIO_PinState gpio_pin_read(int pin);
-
-void gpio_pin_set(int pin, int val)
-{
-    GPIO_TypeDef *gpio;
-    GPIO_InitTypeDef GPIO_InitStruct;
-    int pad = 0;
-    if (pin > 96)
-    {
-        gpio = hwp_gpio2;
-        pad =  pin - 96;
-    }
-    else
-    {
-        gpio = hwp_gpio1;
-        pad =  pin;
-    }
-
-    // set sensor pin to output mode
-    GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT;
-    GPIO_InitStruct.Pin = pad;
-    GPIO_InitStruct.Pull = GPIO_NOPULL;
-    HAL_GPIO_Init(gpio, &GPIO_InitStruct);
-
-    // set sensor pin to high == power on sensor board
-    HAL_GPIO_WritePin(gpio, pad, (GPIO_PinState)val);
-}
-
-GPIO_PinState gpio_pin_read(int pin)
-{
-    GPIO_PinState state = 1;
-    GPIO_TypeDef *gpio;
-    GPIO_InitTypeDef GPIO_InitStruct;
-    int pad = 0;
-    if (pin > 96)
-    {
-        gpio = hwp_gpio2;
-        pad =  pin - 96;
-    }
-    else
-    {
-        gpio = hwp_gpio1;
-        pad =  pin;
-    }
-
-    // set sensor pin to output mode
-    GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
-    GPIO_InitStruct.Pin = pad;
-    GPIO_InitStruct.Pull = GPIO_PULLUP;
-    HAL_GPIO_Init(gpio, &GPIO_InitStruct);
-
-    // set sensor pin to high == power on sensor board
-    state = HAL_GPIO_ReadPin(gpio, pad);
-    return state;
-}
-
-
 static int pulse_encoder_init(void)
 {
     s_encoder_device = rt_device_find("encoder1");
@@ -266,12 +205,12 @@ static void battery_level_task(void *parameter)
     }
     while (1)
     {
-        if(gpio_pin_read(BSP_POWER_CHECK) == GPIO_PIN_RESET)
-        {
-            rt_thread_delay(500);
-            if(gpio_pin_read(BSP_POWER_CHECK) == GPIO_PIN_RESET)
-                gpio_pin_set(BSP_POWER_ON,0);
-        }
+        // if(gpio_pin_read(BSP_POWER_CHECK) == GPIO_PIN_RESET)
+        // {
+        //     rt_thread_delay(500);
+        //     if(gpio_pin_read(BSP_POWER_CHECK) == GPIO_PIN_RESET)
+        //         gpio_pin_set(BSP_POWER_ON,0);
+        // }
         rt_device_t battery_device = rt_device_find("bat1");
         rt_adc_cmd_read_arg_t read_arg;
         read_arg.channel = 7; // 电池电量在通道7
@@ -620,6 +559,65 @@ uint32_t bt_get_class_of_device()
 {
     return (uint32_t)BT_SRVCLS_NETWORK | BT_DEVCLS_PERIPHERAL |
            BT_PERIPHERAL_REMCONTROL;
+}
+
+#define BSP_POWER_ON 8
+#define BSP_POWER_CHECK 7
+void gpio_pin_set(int pin, int val);
+GPIO_PinState gpio_pin_read(int pin);
+
+void gpio_pin_set(int pin, int val)
+{
+    GPIO_TypeDef *gpio;
+    GPIO_InitTypeDef GPIO_InitStruct;
+    int pad = 0;
+    if (pin > 96)
+    {
+        gpio = hwp_gpio2;
+        pad =  pin - 96;
+    }
+    else
+    {
+        gpio = hwp_gpio1;
+        pad =  pin;
+    }
+
+    // set sensor pin to output mode
+    GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT;
+    GPIO_InitStruct.Pin = pad;
+    GPIO_InitStruct.Pull = GPIO_NOPULL;
+    HAL_GPIO_Init(gpio, &GPIO_InitStruct);
+
+    // set sensor pin to high == power on sensor board
+    HAL_GPIO_WritePin(gpio, pad, (GPIO_PinState)val);
+}
+
+GPIO_PinState gpio_pin_read(int pin)
+{
+    GPIO_PinState state = 1;
+    GPIO_TypeDef *gpio;
+    GPIO_InitTypeDef GPIO_InitStruct;
+    int pad = 0;
+    if (pin > 96)
+    {
+        gpio = hwp_gpio2;
+        pad =  pin - 96;
+    }
+    else
+    {
+        gpio = hwp_gpio1;
+        pad =  pin;
+    }
+
+    // set sensor pin to output mode
+    GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+    GPIO_InitStruct.Pin = pad;
+    GPIO_InitStruct.Pull = GPIO_PULLUP;
+    HAL_GPIO_Init(gpio, &GPIO_InitStruct);
+
+    // set sensor pin to high == power on sensor board
+    state = HAL_GPIO_ReadPin(gpio, pad);
+    return state;
 }
 
 /**
