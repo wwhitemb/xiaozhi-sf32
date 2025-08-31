@@ -153,9 +153,9 @@ void gpio_pin_set(int pin, int val)
     HAL_GPIO_WritePin(gpio, pad, (GPIO_PinState)val);
 }
 
-uint8_t gpio_pin_read(int pin)
+GPIO_PinState gpio_pin_read(int pin)
 {
-    uint8_t state = 1;
+    GPIO_PinState state = 1;
     GPIO_TypeDef *gpio;
     GPIO_InitTypeDef GPIO_InitStruct;
     int pad = 0;
@@ -263,10 +263,10 @@ static void battery_level_task(void *parameter)
     }
     while (1)
     {
-        if(gpio_pin_read(BSP_POWER_CHECK) == 0)
+        if(gpio_pin_read(BSP_POWER_CHECK) == GPIO_PIN_RESET)
         {
             rt_thread_delay(500);
-            if(gpio_pin_read(BSP_POWER_CHECK) == 0)
+            if(gpio_pin_read(BSP_POWER_CHECK) == GPIO_PIN_RESET)
                 gpio_pin_set(BSP_POWER_ON,0);
         }
         rt_device_t battery_device = rt_device_find("bat1");
