@@ -142,23 +142,21 @@ void McpServer::AddCommonTools() {
     // 添加RGB LED工具
     RGBLEDTool::RegisterRGBLEDTool(this);
 
-    // 新增：处理关机命令，将IO1设为高电平
+    // 新增：处理关机命令，将POWER设为高电平
     AddTool("self.system.shutdown",
-    "Handle shutdown command and set IO1 to high level",
+    "Handle shutdown command and set POWER to high level",
     PropertyList(),  // 无参数
     [=](const PropertyList&) -> ReturnValue {
-        // 1. 定义IO1对应的引脚（根据硬件实际引脚修改，例如PA0）
+
+        // 1. （可选）添加关机前的其他操作，如延迟、日志输出
+        rt_kprintf("Shutdown command received, POWER set to high level\n");
+        rt_thread_mdelay(100);  // 延迟确保电平稳定
+
+        // 2. （可选）执行实际关机流程（根据系统需求添加）
         rt_kprintf("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n");
         rt_kprintf("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!Power CHECK OFF!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n");
         rt_kprintf("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n");
-        gpio_pin_set(BSP_POWER_ON,0);
-
-        // 4. （可选）添加关机前的其他操作，如延迟、日志输出
-        rt_kprintf("Shutdown command received, IO1 set to high level\n");
-        rt_thread_mdelay(100);  // 延迟确保电平稳定
-
-        // 5. （可选）执行实际关机流程（根据系统需求添加）
-        // system_poweroff();  // 若需要真正关机，启用此句（需系统支持）
+        gpio_pin_set(BSP_POWER_ON,0);//若需要真正关机，启用此句（需系统支持）
 
         return true;
     });
