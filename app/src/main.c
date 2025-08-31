@@ -124,6 +124,64 @@ static uint32_t
 static rt_timer_t s_pulse_encoder_timer = NULL;
 static struct rt_device *s_encoder_device;
 
+
+#define BSP_POWER_ON 8
+#define BSP_POWER_CHECK 7
+void gpio_pin_set(int pin, int val)
+{
+    GPIO_TypeDef *gpio;
+    GPIO_InitTypeDef GPIO_InitStruct;
+    int pad = 0;
+    if (pin > 96)
+    {
+        gpio = hwp_gpio2;
+        pad =  pin - 96;
+    }
+    else
+    {
+        gpio = hwp_gpio1;
+        pad =  pin;
+    }
+
+    // set sensor pin to output mode
+    GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT;
+    GPIO_InitStruct.Pin = pad;
+    GPIO_InitStruct.Pull = GPIO_NOPULL;
+    HAL_GPIO_Init(gpio, &GPIO_InitStruct);
+
+    // set sensor pin to high == power on sensor board
+    HAL_GPIO_WritePin(gpio, pad, (GPIO_PinState)val);
+}
+
+uint8_t gpio_pin_read(int pin)
+{
+    uint8_t state = 1;
+    GPIO_TypeDef *gpio;
+    GPIO_InitTypeDef GPIO_InitStruct;
+    int pad = 0;
+    if (pin > 96)
+    {
+        gpio = hwp_gpio2;
+        pad =  pin - 96;
+    }
+    else
+    {
+        gpio = hwp_gpio1;
+        pad =  pin;
+    }
+
+    // set sensor pin to output mode
+    GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+    GPIO_InitStruct.Pin = pad;
+    GPIO_InitStruct.Pull = GPIO_PULLUP;
+    HAL_GPIO_Init(gpio, &GPIO_InitStruct);
+
+    // set sensor pin to high == power on sensor board
+    state = HAL_GPIO_ReadPin(gpio, pad);
+    return state;
+}
+
+
 static int pulse_encoder_init(void)
 {
     s_encoder_device = rt_device_find("encoder1");
@@ -205,6 +263,12 @@ static void battery_level_task(void *parameter)
     }
     while (1)
     {
+        if(gpio_pin_read(BSP_POWER_CHECK) == 0)
+        {
+            rt_thread_delay(500);
+            if(gpio_pin_read(BSP_POWER_CHECK) == 0)
+                gpio_pin_set(BSP_POWER_ON,0);
+        }
         rt_device_t battery_device = rt_device_find("bat1");
         rt_adc_cmd_read_arg_t read_arg;
         read_arg.channel = 7; // 电池电量在通道7
@@ -555,35 +619,6 @@ uint32_t bt_get_class_of_device()
            BT_PERIPHERAL_REMCONTROL;
 }
 
-#define BSP_POWER_ON 8
-#define BSP_POWER_CHECK 7
-#define HSP_IO_TEST1 10
-#define HSP_IO_TEST2 11
-void gpio_pin_set(int pin, int val)
-{
-    GPIO_TypeDef *gpio;
-    GPIO_InitTypeDef GPIO_InitStruct;
-    int pad = 0;
-    if (pin > 96)
-    {
-        gpio = hwp_gpio2;
-        pad =  pin - 96;
-    }
-    else
-    {
-        gpio = hwp_gpio1;
-        pad =  pin;
-    }
-
-    // set sensor pin to output mode
-    GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT;
-    GPIO_InitStruct.Pin = pad;
-    GPIO_InitStruct.Pull = GPIO_NOPULL;
-    HAL_GPIO_Init(gpio, &GPIO_InitStruct);
-
-    // set sensor pin to high == power on sensor board
-    HAL_GPIO_WritePin(gpio, pad, (GPIO_PinState)val);
-}
 /**
  * @brief  检查设备开机原因，根据不同的唤醒源执行相应处理
  * @note   该函数用于区分设备是正常开机、休眠唤醒还是异常唤醒，
@@ -605,8 +640,6 @@ static void check_poweron_reason(void)
         // 正常开机流程，无需特殊处理
         rt_thread_mdelay(1000);//延时1秒进行消抖
         gpio_pin_set(BSP_POWER_ON, 1);//打开PMOS电源
-        gpio_pin_set(HSP_IO_TEST1, 1);
-        gpio_pin_set(HSP_IO_TEST2, 0);
         rt_kprintf("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n");
         rt_kprintf("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!![START]!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n");
         rt_kprintf("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!Power IO ON!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n");
