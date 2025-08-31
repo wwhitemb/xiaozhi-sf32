@@ -195,64 +195,6 @@ static void pulse_encoder_timeout_handle(void *parameter)
 }
 #endif
 
-#define BSP_POWER_ON 8
-#define BSP_POWER_CHECK 7
-#define BSP_USER_KEY 38
-
-void gpio_pin_set(int pin, int val)
-{
-    GPIO_TypeDef *gpio;
-    GPIO_InitTypeDef GPIO_InitStruct;
-    int pad = 0;
-    if (pin > 96)
-    {
-        gpio = hwp_gpio2;
-        pad =  pin - 96;
-    }
-    else
-    {
-        gpio = hwp_gpio1;
-        pad =  pin;
-    }
-
-    // set sensor pin to output mode
-    GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT;
-    GPIO_InitStruct.Pin = pad;
-    GPIO_InitStruct.Pull = GPIO_NOPULL;
-    HAL_GPIO_Init(gpio, &GPIO_InitStruct);
-
-    // set sensor pin to high == power on sensor board
-    HAL_GPIO_WritePin(gpio, pad, (GPIO_PinState)val);
-}
-
-GPIO_PinState gpio_pin_read(int pin)
-{
-    GPIO_PinState state = 1;
-    GPIO_TypeDef *gpio;
-    GPIO_InitTypeDef GPIO_InitStruct;
-    int pad = 0;
-    if (pin > 96)
-    {
-        gpio = hwp_gpio2;
-        pad =  pin - 96;
-    }
-    else
-    {
-        gpio = hwp_gpio1;
-        pad =  pin;
-    }
-
-    // set sensor pin to output mode
-    GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
-    GPIO_InitStruct.Pin = pad;
-    GPIO_InitStruct.Pull = GPIO_PULLUP;
-    HAL_GPIO_Init(gpio, &GPIO_InitStruct);
-
-    // set sensor pin to high == power on sensor board
-    state = HAL_GPIO_ReadPin(gpio, pad);
-    return state;
-}
-
 static void battery_level_task(void *parameter)
 {
     g_battery_mb = rt_mb_create("battery_level", 1, RT_IPC_FLAG_FIFO);
@@ -263,27 +205,6 @@ static void battery_level_task(void *parameter)
     }
     while (1)
     {
-        if(gpio_pin_read(BSP_USER_KEY) == GPIO_PIN_RESET)
-        {
-            if(gpio_pin_read(BSP_USER_KEY) == GPIO_PIN_RESET)
-            {
-                // gpio_pin_set(BSP_POWER_ON,0);
-                rt_kprintf("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n");
-                rt_kprintf("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!Power IO OFF!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n");
-                rt_kprintf("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n");
-
-            }
-        }
-        if(gpio_pin_read(BSP_POWER_CHECK) == GPIO_PIN_RESET)
-        {
-            if(gpio_pin_read(BSP_POWER_CHECK) == GPIO_PIN_RESET)
-            {
-                rt_kprintf("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n");
-                rt_kprintf("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!Power CHECK OFF!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n");
-                rt_kprintf("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n");
-
-            }
-        }
         rt_device_t battery_device = rt_device_find("bat1");
         rt_adc_cmd_read_arg_t read_arg;
         read_arg.channel = 7; // 电池电量在通道7
@@ -634,6 +555,64 @@ uint32_t bt_get_class_of_device()
            BT_PERIPHERAL_REMCONTROL;
 }
 
+#define BSP_POWER_ON 8
+#define BSP_POWER_CHECK 7
+#define BSP_USER_KEY 38
+
+void gpio_pin_set(int pin, int val)
+{
+    GPIO_TypeDef *gpio;
+    GPIO_InitTypeDef GPIO_InitStruct;
+    int pad = 0;
+    if (pin > 96)
+    {
+        gpio = hwp_gpio2;
+        pad =  pin - 96;
+    }
+    else
+    {
+        gpio = hwp_gpio1;
+        pad =  pin;
+    }
+
+    // set sensor pin to output mode
+    GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT;
+    GPIO_InitStruct.Pin = pad;
+    GPIO_InitStruct.Pull = GPIO_NOPULL;
+    HAL_GPIO_Init(gpio, &GPIO_InitStruct);
+
+    // set sensor pin to high == power on sensor board
+    HAL_GPIO_WritePin(gpio, pad, (GPIO_PinState)val);
+}
+
+GPIO_PinState gpio_pin_read(int pin)
+{
+    GPIO_PinState state = 1;
+    GPIO_TypeDef *gpio;
+    GPIO_InitTypeDef GPIO_InitStruct;
+    int pad = 0;
+    if (pin > 96)
+    {
+        gpio = hwp_gpio2;
+        pad =  pin - 96;
+    }
+    else
+    {
+        gpio = hwp_gpio1;
+        pad =  pin;
+    }
+
+    // set sensor pin to output mode
+    GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+    GPIO_InitStruct.Pin = pad;
+    GPIO_InitStruct.Pull = GPIO_PULLUP;
+    HAL_GPIO_Init(gpio, &GPIO_InitStruct);
+
+    // set sensor pin to high == power on sensor board
+    state = HAL_GPIO_ReadPin(gpio, pad);
+    return state;
+}
+
 /**
  * @brief  检查设备开机原因，根据不同的唤醒源执行相应处理
  * @note   该函数用于区分设备是正常开机、休眠唤醒还是异常唤醒，
@@ -888,10 +867,10 @@ int main(void)
             bd_addr_t addr;
             ble_get_public_address(&addr);
             sprintf(local_name, "%s-%02x:%02x:%02x:%02x:%02x:%02x",
-                    "sfpan-xiaozhi-xty", addr.addr[0], addr.addr[1], addr.addr[2],
+                    BLUETOOTH_NAME, addr.addr[0], addr.addr[1], addr.addr[2],
                     addr.addr[3], addr.addr[4], addr.addr[5]);
 #else
-            const char *local_name = "sfpan-xiaozhi-xty";
+            const char *local_name = BLUETOOTH_NAME;
 #endif
             bt_interface_set_local_name(strlen(local_name), (void *)local_name);
         }
