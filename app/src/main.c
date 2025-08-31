@@ -629,8 +629,6 @@ static void check_poweron_reason(void)
     // 获取系统开机模式（通过芯片电源管理模块接口）
     rt_pin_mode(BSP_POWER_ON, PIN_MODE_OUTPUT);
     rt_pin_mode(BSP_POWER_CHECK, PIN_MODE_INPUT_PULLUP);
-    rt_pin_mode(HSP_IO_TEST1, PIN_MODE_OUTPUT);
-    rt_pin_mode(HSP_IO_TEST2, PIN_MODE_OUTPUT);
     switch (SystemPowerOnModeGet())
     {
     // 情况1：重启开机或冷启动（首次上电）
