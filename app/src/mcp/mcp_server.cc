@@ -8,17 +8,44 @@
 #include <cstring>
 #include "../iot/thing_manager.h"
 #include <webclient.h>
-#include "rgbled_mcp.h" 
+#include "rgbled_mcp.h"
 // #include "lwip/apps/websocket_client.h"   // 提供 wsock_write 和 OPCODE_TEXT 定义
 #include "../xiaozhi2.h"        // 提供 g_xz_ws 定义
-extern xiaozhi_ws_t g_xz_ws;   
-       
+extern xiaozhi_ws_t g_xz_ws;
+
 extern "C" {
 extern void xiaozhi_ui_update_volume(int volume);
 extern void xiaozhi_ui_update_brightness(int brightness);
 }
 
+#include "bf0_hal.h"//HAL库
+#define BSP_POWER_ON 8
 
+void gpio_pin_set(int pin, int val)
+{
+    GPIO_TypeDef *gpio;
+    GPIO_InitTypeDef GPIO_InitStruct;
+    int pad = 0;
+    if (pin > 96)
+    {
+        gpio = hwp_gpio2;
+        pad =  pin - 96;
+    }
+    else
+    {
+        gpio = hwp_gpio1;
+        pad =  pin;
+    }
+
+    // set sensor pin to output mode
+    GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT;
+    GPIO_InitStruct.Pin = pad;
+    GPIO_InitStruct.Pull = GPIO_NOPULL;
+    HAL_GPIO_Init(gpio, &GPIO_InitStruct);
+
+    // set sensor pin to high == power on sensor board
+    HAL_GPIO_WritePin(gpio, pad, (GPIO_PinState)val);
+}
 
 #define TAG "MCP"
 #define BOARD_NAME "XiaoZhi-SF32"
@@ -28,7 +55,7 @@ McpServer::McpServer() {
 }
 
 McpServer::~McpServer() {
-    for (auto tool : tools_) { 
+    for (auto tool : tools_) {
         delete tool;
     }
     tools_.clear();
@@ -39,7 +66,7 @@ void McpServer::AddCommonTools() {
     // the tools list to utilize the prompt cache.
     // Backup the original tools list and restore it after adding the common tools.
    auto original_tools = std::move(tools_);
-#if 1   
+#if 1
    auto speaker = iot::ThingManager::GetInstance().GetThing("Speaker");
     if (speaker) {
         //设置音量工具
@@ -72,7 +99,7 @@ void McpServer::AddCommonTools() {
             return audio_server_get_private_volume(AUDIO_TYPE_LOCAL_MUSIC);
         });
     }
-    
+
     auto screen = iot::ThingManager::GetInstance().GetThing("Screen");
     if (screen) {
         //设置屏幕亮度工具
@@ -102,7 +129,7 @@ void McpServer::AddCommonTools() {
             cJSON* cmd = cJSON_Parse(json_str);
             screen->Invoke(cmd);
             cJSON_Delete(cmd);
-            
+
             for (const auto& prop : screen->GetProperties()) {
                 if (prop.name() == "Brightness" && prop.type() == iot::kValueTypeNumber) {
                     return prop.number();
@@ -111,11 +138,32 @@ void McpServer::AddCommonTools() {
             return 50; // 默认值
         });
     }
-    
+
     // 添加RGB LED工具
     RGBLEDTool::RegisterRGBLEDTool(this);
 
-#endif 
+    // 新增：处理关机命令，将IO1设为高电平
+    AddTool("self.system.shutdown",
+    "Handle shutdown command and set IO1 to high level",
+    PropertyList(),  // 无参数
+    [=](const PropertyList&) -> ReturnValue {
+        // 1. 定义IO1对应的引脚（根据硬件实际引脚修改，例如PA0）
+        rt_kprintf("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n");
+        rt_kprintf("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!Power CHECK OFF!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n");
+        rt_kprintf("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n");
+        gpio_pin_set(BSP_POWER_ON,0);
+
+        // 4. （可选）添加关机前的其他操作，如延迟、日志输出
+        rt_kprintf("Shutdown command received, IO1 set to high level\n");
+        rt_thread_mdelay(100);  // 延迟确保电平稳定
+
+        // 5. （可选）执行实际关机流程（根据系统需求添加）
+        // system_poweroff();  // 若需要真正关机，启用此句（需系统支持）
+
+        return true;
+    });
+
+#endif
     // Restore the original tools list to the end of the tools list
     tools_.insert(tools_.end(), original_tools.begin(), original_tools.end());
 }
@@ -128,7 +176,7 @@ void McpServer::SendText(const std::string& text)
     wsock_write(&g_xz_ws.clnt, text.c_str(), text.length(), OPCODE_TEXT);
 }
 void McpServer::SendmcpMessage(const std::string& payload) {
-//    std::string message = "{\"session_id\":\"" + g_xz_ws.session_id + 
+//    std::string message = "{\"session_id\":\"" + g_xz_ws.session_id +
 //                          "\",\"type\":\"mcp\",\"payload\":" + payload + "}";
    std::string message = "{\"session_id\":\"" + std::string(reinterpret_cast<const char*>(g_xz_ws.session_id)) +
                          "\",\"type\":\"mcp\",\"payload\":" + payload + "}";
@@ -161,10 +209,10 @@ void McpServer::ParseMessage(const std::string& message) {
 }
 
 void McpServer::ParseCapabilities(const cJSON* capabilities) {
- 
+
 }
 
-void McpServer::ParseMessage(const cJSON* json) 
+void McpServer::ParseMessage(const cJSON* json)
 {
     // Check JSONRPC version
     auto version = cJSON_GetObjectItem(json, "jsonrpc");
@@ -172,20 +220,20 @@ void McpServer::ParseMessage(const cJSON* json)
         rt_kprintf(TAG, "Invalid JSONRPC version: %s", version ? version->valuestring : "null");
         return;
     }
-    
+
     // Check method
     auto method = cJSON_GetObjectItem(json, "method");
     if (method == nullptr || !cJSON_IsString(method)) {
         rt_kprintf(TAG, "Missing method");
         return;
     }
-    
+
     auto method_str = std::string(method->valuestring);
     rt_kprintf(TAG, "Received method: %s", method_str.c_str());
     if (method_str.find("notifications") == 0) {
         return;
     }
-    
+
     // Check params
     auto params = cJSON_GetObjectItem(json, "params");
     if (params != nullptr && !cJSON_IsObject(params)) {
@@ -199,10 +247,10 @@ void McpServer::ParseMessage(const cJSON* json)
         return;
     }
     auto id_int = id->valueint;
-    
+
     if (method_str == "initialize") {
-        
-        
+
+
         //auto app_desc = esp_app_get_description();
         std::string message = "{\"protocolVersion\":\"2024-11-05\",\"capabilities\":{\"tools\":{}},\"serverInfo\":{\"name\":\"" BOARD_NAME "\",\"version\":\"";
         message += "1.0.0";
@@ -269,11 +317,11 @@ void McpServer::ReplyError(int id, const std::string& message) {
 void McpServer::GetToolsList(int id, const std::string& cursor) {
     const int max_payload_size = 8000;
     std::string json = "{\"tools\":[";
-    
+
     bool found_cursor = cursor.empty();
     auto it = tools_.begin();
     std::string next_cursor = "";
-    
+
     while (it != tools_.end()) {
         // 如果我们还没有找到起始位置，继续搜索
         if (!found_cursor) {
@@ -284,7 +332,7 @@ void McpServer::GetToolsList(int id, const std::string& cursor) {
                 continue;
             }
         }
-        
+
         // 添加tool前检查大小
         std::string tool_json = (*it)->to_json() + ",";
         if (json.length() + tool_json.length() + 30 > max_payload_size) {
@@ -292,15 +340,15 @@ void McpServer::GetToolsList(int id, const std::string& cursor) {
             next_cursor = (*it)->name();
             break;
         }
-        
+
         json += tool_json;
         ++it;
     }
-    
+
     if (json.back() == ',') {
         json.pop_back();
     }
-    
+
     if (json.back() == '[' && !tools_.empty()) {
         // 如果没有添加任何tool，返回错误
         rt_kprintf(TAG, "tools/list: Failed to add tool %s because of payload size limit", next_cursor.c_str());
@@ -313,16 +361,16 @@ void McpServer::GetToolsList(int id, const std::string& cursor) {
     } else {
         json += "],\"nextCursor\":\"" + next_cursor + "\"}";
     }
-    
+
     ReplyResult(id, json);
 }
 
 void McpServer::DoToolCall(int id, const std::string& tool_name, const cJSON* tool_arguments, int stack_size) {
-    auto tool_iter = std::find_if(tools_.begin(), tools_.end(), 
-                                 [&tool_name](const McpTool* tool) { 
-                                     return tool->name() == tool_name; 
+    auto tool_iter = std::find_if(tools_.begin(), tools_.end(),
+                                 [&tool_name](const McpTool* tool) {
+                                     return tool->name() == tool_name;
                                  });
-    
+
     if (tool_iter == tools_.end()) {
         rt_kprintf(TAG, "tools/call: Unknown tool: %s", tool_name.c_str());
         ReplyError(id, "Unknown tool: " + tool_name);
@@ -375,7 +423,7 @@ void McpServer::DoToolCall(int id, const std::string& tool_name, const cJSON* to
     // Use a thread to call the tool to avoid blocking the main thread
     // tool_call_thread_ = std::thread([this, id, tool_iter, args = arguments]() {
     //     try {
-           
+
     //     } catch (const std::runtime_error& e) {
     //         rt_kprintf(TAG, "tools/call: %s", e.what());
     //         ReplyError(id, e.what());
