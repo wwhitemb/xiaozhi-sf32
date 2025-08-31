@@ -559,7 +559,31 @@ uint32_t bt_get_class_of_device()
 #define BSP_POWER_CHECK 7
 #define HSP_IO_TEST1 10
 #define HSP_IO_TEST2 11
+void gpio_pin_set(int pin, int val)
+{
+    GPIO_TypeDef *gpio;
+    GPIO_InitTypeDef GPIO_InitStruct;
+    int pad = 0;
+    if (pin > 96)
+    {
+        gpio = hwp_gpio2;
+        pad =  pin - 96;
+    }
+    else
+    {
+        gpio = hwp_gpio1;
+        pad =  pin;
+    }
 
+    // set sensor pin to output mode
+    GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT;
+    GPIO_InitStruct.Pin = pad;
+    GPIO_InitStruct.Pull = GPIO_NOPULL;
+    HAL_GPIO_Init(gpio, &GPIO_InitStruct);
+
+    // set sensor pin to high == power on sensor board
+    HAL_GPIO_WritePin(gpio, pad, (GPIO_PinState)val);
+}
 /**
  * @brief  检查设备开机原因，根据不同的唤醒源执行相应处理
  * @note   该函数用于区分设备是正常开机、休眠唤醒还是异常唤醒，
@@ -580,9 +604,9 @@ static void check_poweron_reason(void)
     {
         // 正常开机流程，无需特殊处理
         rt_thread_mdelay(1000);//延时1秒进行消抖
-        rt_pin_write(BSP_POWER_ON, 1);//打开PMOS电源
-        rt_pin_write(HSP_IO_TEST1, 1);
-        rt_pin_write(HSP_IO_TEST2, 0);
+        gpio_pin_set(BSP_POWER_ON, 1);//打开PMOS电源
+        gpio_pin_set(HSP_IO_TEST1, 1);
+        gpio_pin_set(HSP_IO_TEST2, 0);
         rt_kprintf("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n");
         rt_kprintf("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!![START]!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n");
         rt_kprintf("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!Power IO ON!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n");
@@ -628,7 +652,7 @@ static void check_poweron_reason(void)
             {
                 // 按键已松开，认为是误触发，直接关机
                 rt_kprintf("Not long press, shutdown now.\n");
-                rt_pin_write(BSP_POWER_ON, 0);//关闭PMOS电源
+                gpio_pin_set(BSP_POWER_ON, 0);//关闭PMOS电源
                 rt_kprintf("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!Power IO OFF!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n");
                 rt_kprintf("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n");
                 PowerDownCustom();
@@ -639,7 +663,7 @@ static void check_poweron_reason(void)
             {
                 // 长按判定为正常开机请求，继续启动流程
                 rt_kprintf("Long press detected, power on as normal.\n");
-                rt_pin_write(BSP_POWER_ON, 0);//重启后关闭PMOS电源
+                gpio_pin_set(BSP_POWER_ON, 0);//重启后关闭PMOS电源
                 rt_kprintf("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!Power IO OFF!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n");
                 rt_kprintf("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n");
             }
