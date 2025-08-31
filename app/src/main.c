@@ -555,12 +555,11 @@ uint32_t bt_get_class_of_device()
            BT_PERIPHERAL_REMCONTROL;
 }
 
-#define BSP_POWER_ON 39
-#define BSP_POWER_CHECK 40
-#define HSP_IO_TEST1 32
-#define HSP_IO_TEST2 31
-#define BSO_POWER_GPIO_ON PA08
-#define BSP_POWER_GPIO_CHECK PA07
+#define BSP_POWER_ON 8
+#define BSP_POWER_CHECK 7
+#define HSP_IO_TEST1 10
+#define HSP_IO_TEST2 11
+
 /**
  * @brief  检查设备开机原因，根据不同的唤醒源执行相应处理
  * @note   该函数用于区分设备是正常开机、休眠唤醒还是异常唤醒，
